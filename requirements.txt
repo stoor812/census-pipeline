@@ -3,3 +3,4 @@ pandas
 requests
 pyarrow
 python-dotenv
+click
