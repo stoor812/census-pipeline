@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 from src.pipeline.ingest import run_ingest
 from src.pipeline.transform import run_transform
 from src.pipeline.validate import validate as run_validate
-from src.pipeline.load import run_load
+from src.pipeline.load import run_load, get_engine, create_table, upsert
 
 load_dotenv()
 
@@ -47,11 +47,13 @@ def _get_latest_s3_key(prefix: str) -> str:
         region_name=os.getenv("AWS_REGION"),
     )
     bucket = os.getenv("S3_BUCKET_NAME")
-    response = s3.list_objects_v2(Bucket=bucket, Prefix=prefix)
-    if "Contents" not in response:
+    paginator = s3.get_paginator("list_objects_v2")
+    all_objects = []
+    for page in paginator.paginate(Bucket=bucket, Prefix=prefix):
+        all_objects.extend(page.get("Contents", []))
+    if not all_objects:
         raise FileNotFoundError(f"No files found in s3://{bucket}/{prefix}")
-    objects = sorted(response["Contents"], key=lambda x: x["LastModified"])
-    return objects[-1]["Key"]
+    return sorted(all_objects, key=lambda x: x["LastModified"])[-1]["Key"]
 
 
 def _read_silver_from_s3(silver_key: str) -> pd.DataFrame:
@@ -106,7 +108,7 @@ def transform(bronze_key):
     click.echo(f"Silver key: {silver_key}")
 
 
-@cli.command()
+@cli.command(name="validate")
 @click.option(
     "--silver-key",
     default=None,
@@ -177,11 +179,17 @@ def run(skip_ingest):
         summary = run_validate(df)
         click.echo(f"Validation summary: {summary}")
 
-        # Step 4 — Load
-        total = run_load(silver_key)
+        # Step 4 — Load (reuses df already read for validation — avoids a second S3 fetch)
+        engine = get_engine()
+        create_table(engine)
+        total = upsert(df, engine)
         click.echo(f"Loaded {total} rows into census_profiles.")
     except click.ClickException:
         raise
+    except FileNotFoundError as e:
+        raise click.ClickException(
+            f"S3 layer missing — run the preceding pipeline step first. Details: {e}"
+        ) from e
     except Exception as e:
         raise click.ClickException(str(e)) from e
 
