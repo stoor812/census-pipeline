@@ -4,3 +4,7 @@ requests
 pyarrow
 python-dotenv
 click
+sqlalchemy
+psycopg2-binary
+apache-airflow==2.8.1
+pytest

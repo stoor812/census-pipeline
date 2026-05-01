@@ -83,7 +83,6 @@ source venv/bin/activate        # macOS / Linux
 
 ```bash
 pip install -r requirements.txt
-pip install sqlalchemy psycopg2-binary pytest
 ```
 
 ### 3. Configure environment variables

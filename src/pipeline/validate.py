@@ -6,7 +6,6 @@ Advisory checks log warnings but allow the pipeline to continue.
 """
 
 import logging
-import os
 
 import pandas as pd
 
@@ -171,34 +170,4 @@ def validate(df: pd.DataFrame) -> dict:
     return summary
 
 
-# --- Entrypoint ----------------------------------------------------------
-
-if __name__ == "__main__":
-    import sys
-    import io
-    import boto3
-    from dotenv import load_dotenv
-    load_dotenv()
-
-    if len(sys.argv) != 2:
-        print("Usage: python -m src.pipeline.validate <silver_s3_key>")
-        sys.exit(1)
-
-    required_env = ["AWS_ACCESS_KEY_ID", "AWS_SECRET_ACCESS_KEY", "AWS_REGION", "S3_BUCKET_NAME"]
-    missing_env = [k for k in required_env if not os.getenv(k)]
-    if missing_env:
-        print(f"Missing required environment variables: {missing_env}")
-        sys.exit(1)
-
-    silver_key = sys.argv[1]
-    bucket = os.getenv("S3_BUCKET_NAME")
-
-    s3 = boto3.client(
-        "s3",
-        aws_access_key_id=os.getenv("AWS_ACCESS_KEY_ID"),
-        aws_secret_access_key=os.getenv("AWS_SECRET_ACCESS_KEY"),
-        region_name=os.getenv("AWS_REGION"),
-    )
-    response = s3.get_object(Bucket=bucket, Key=silver_key)
-    df = pd.read_parquet(io.BytesIO(response["Body"].read()))
-    validate(df)
+# Run validation via the CLI: `python -m src.pipeline.cli validate`.

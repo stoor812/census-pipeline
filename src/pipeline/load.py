@@ -15,13 +15,13 @@ from sqlalchemy import (
     Float,
     Integer,
     MetaData,
+    PrimaryKeyConstraint,
     String,
     Table,
     Text,
     create_engine,
 )
 from sqlalchemy.dialects.postgresql import insert
-from sqlalchemy import PrimaryKeyConstraint
 
 load_dotenv()
 
